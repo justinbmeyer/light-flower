@@ -26,11 +26,30 @@ export const flowerPromise = loadFlowerPromise();
 export const flowerPower = flowerPromise.then((baseFlower) => {
     return {
         init_flower({position = [0,0,0]} = {}){
+            const group = new THREE.Group();
             const flower = baseFlower.clone();
-            flower.position.set(...position);
-            flower.rotation.y = - Math.PI * ( 60 / 180);
-            flower.rotation.x = Math.PI / 2;
-            return flower;
+
+            const box = new THREE.Box3().setFromObject(flower);
+            const boundingSphere = new THREE.Sphere();
+            box.getBoundingSphere(boundingSphere);
+            
+
+            // Create a visual representation of the bounding sphere
+            const sphereMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00, wireframe: true, 
+                transparent: true,
+                opacity: 0.0
+            });
+            const boundingSphereMesh = new THREE.Mesh(new THREE.SphereGeometry(boundingSphere.radius, 32, 32), sphereMaterial);
+            boundingSphereMesh.position.copy(boundingSphere.center);
+
+            // Add the bounding sphere mesh to the group
+            group.add(boundingSphereMesh);
+            group.add(flower);
+            group.position.set(...position);
+            group.rotation.y = - Math.PI * ( 60 / 180);
+            group.rotation.x = Math.PI / 2;
+            return group;
         },
         animate_flower(flower, raycaster) {
             const flowerIntersects = raycaster.intersectObjects(flower.children);
