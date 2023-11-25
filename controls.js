@@ -87,9 +87,10 @@ export function animate_directionalControls(controls){
 
 export function init_getMouse(element, onMouseMove){
     const mouse = new THREE.Vector2();
-
-    element.addEventListener('mousemove', handleMouseMove, false)
-
+    
+    element.addEventListener('pointermove', handleMouseMove, false)
+    element.style ="touch-action: none";
+    
     function handleMouseMove(event) {
         // Calculate mouse position in normalized device coordinates (-1 to +1) for both components
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;

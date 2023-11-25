@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export function makeAmbientLight(){
-    return new THREE.AmbientLight( /*0xe0e0e0*/  0x383838 ); // soft white light
+    return new THREE.AmbientLight( /*0xe0e0e0*/  0x383838, 2 ); // soft white light
 }
 
 export function makeSpotLight(target){
