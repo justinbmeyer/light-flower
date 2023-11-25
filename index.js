@@ -36,8 +36,6 @@ function main() {
     scene.add(makeGrass());
     //scene.add(makeGrassTexture());
 
-    
-
     let oneMouseMove = false;
     // EVENTS
     function mouseMove({event}){
