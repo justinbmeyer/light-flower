@@ -14,6 +14,8 @@ import { flowerPower } from './objects/flower/flower.js';
 import { init_cube } from './objects/cube.js';
 import { debug, drawFrustrum } from './debug.js';
 
+//import { monkeyPower } from './objects/monkey/monkey.js';
+
 function main() {
 
     const  {renderer, camera} = makeCameraRendererMatchElementFrame();
@@ -50,9 +52,10 @@ function main() {
     
     //drawFrustrum(scene, camera);
 
-    Promise.all([flowerPower])
+    Promise.all([flowerPower, /*monkeyPower*/])
         .then( ([
-            {init_flower, animate_flower}
+            {init_flower, animate_flower},
+            //{init_monkey}
         ])=>{
         
         const flowers = [];
@@ -62,7 +65,8 @@ function main() {
             flowers.push(flower);
         }
 
-        
+        //const monkey = init_monkey({position: [0,0,0]})
+        //scene.add(monkey);
 
         function animate(time){
             const mouse = getMouse();

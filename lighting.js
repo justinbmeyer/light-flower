@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 
 export function makeAmbientLight(){
-    return new THREE.AmbientLight( /*0xe0e0e0*/  0x383838, 2 ); // soft white light
+    return new THREE.AmbientLight( /*0xe0e0e0*/  0x383838, 20); // soft white light
 }
 
 export function makeSpotLight(target){
-    const spotLight = new THREE.SpotLight(0xffffff, 20 * 5);
+    const spotLight = new THREE.SpotLight(0xffffff, 20 * 1);
     spotLight.angle = Math.PI / 30; // The width of the light cone
     spotLight.penumbra = 0.2; // How soft the edge of the light cone is
     spotLight.target.position.set(0, 0, 0);
