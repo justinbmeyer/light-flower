@@ -1,5 +1,5 @@
 import { GLTFLoader } from '../../node_modules/three/examples/jsm/loaders/GLTFLoader.js';
-
+import { moveToSurfaceOfSphere } from '../../geometry-helpers.js';
 
 function loadFlowerModel(success, progress, error){
     const loader = new GLTFLoader();
@@ -46,9 +46,13 @@ export const flowerPower = flowerPromise.then((baseFlower) => {
             // Add the bounding sphere mesh to the group
             group.add(boundingSphereMesh);
             group.add(flower);
-            group.position.set(...position);
-            group.rotation.y = - Math.PI * ( 60 / 180);
-            group.rotation.x = Math.PI / 2;
+            //console.log(position);
+            //group.position.set(...position);
+            group.scale.set(4,4,4);
+            //group.rotation.y = - Math.PI * ( 60 / 180);
+            //group.rotation.x = Math.PI / 2;
+
+            moveToSurfaceOfSphere({radius: 10, object3d: group})
             return group;
         },
         animate_flower(flower, raycaster) {

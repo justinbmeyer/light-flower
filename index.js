@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader.js';
 
-import { makeGrass, makeGrassTexture } from './grass.js';
+import { makeGrassTexture, makeGrassWorld} from './grass.js';
 import { makeCameraRendererMatchElementFrame } from './camera-renderer-element.js';
 import {  
         makeSpotLight, makeAmbientLight, 
@@ -20,23 +20,22 @@ function main() {
 
     const  {renderer, camera} = makeCameraRendererMatchElementFrame();
     const scene = new THREE.Scene();
-    //debug(scene);
+    debug(scene);
 
     // controls
-    const directionalControls = init_directionalControls(camera, renderer);
+    const directionalControls = init_directionalControls(camera, renderer, scene);
     const getMouse = init_getMouse(renderer.domElement, mouseMove);
 
 	
-
-    
     // lighting
     const spotLight = makeSpotLight();
     positionSpotLightAtCamera(spotLight, camera);
     scene.add(spotLight, spotLight.target, makeAmbientLight() );
 
     // "game board"
-    scene.add(makeGrass());
+    //scene.add(makeGrass());
     //scene.add(makeGrassTexture());
+    scene.add(makeGrassWorld(10))
 
     let oneMouseMove = false;
     // EVENTS

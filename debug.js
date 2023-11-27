@@ -3,8 +3,8 @@ import { init_cube } from './objects/cube.js';
 
 export function debug(scene){
 
-    const size = 10; // The size of the grid (10x10 in this example)
-    const divisions = 10; // How many divisions (lines) the grid will have
+    const size = 25; // The size of the grid (10x10 in this example)
+    const divisions = 25; // How many divisions (lines) the grid will have
 
     const gridHelper = new THREE.GridHelper(size, divisions);
     gridHelper.rotation.x = Math.PI / 2; 
@@ -12,6 +12,12 @@ export function debug(scene){
     gridHelper.position.y = 0;
     gridHelper.position.z = 0;
     scene.add(gridHelper);
+
+    const gridHelper2 = new THREE.GridHelper(size, divisions);
+    gridHelper2.position.x = 0;
+    gridHelper2.position.y = 0;
+    gridHelper2.position.z = 0;
+    scene.add(gridHelper2);
 
 
     // DEBUG
@@ -178,3 +184,5 @@ function angleBetweenNormals(vector1, vector2) {
     // Calculate the angle in radians
     return Math.acos(dot);
 }
+
+
