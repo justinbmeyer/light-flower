@@ -88,8 +88,27 @@ export function init_directionalControls(camera, renderer, scene){
     let forwardBackSpeed = 0;
     let leftRightSpeed = 0;
 
-    
-    window.addEventListener('deviceorientation', function(event) {
+    //const button = document.createElement("button");
+
+    //button.innerHTML = "enable device orientation";
+    window.onclick = function(){
+        window.onclick = null;
+        console.log("testing");
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+              .then(permissionState => {
+                if (permissionState === 'granted') {
+                  window.addEventListener('deviceorientation', handleDeviceOrientation);
+                }
+              })
+              .catch(console.error);
+          } else {
+            
+            window.addEventListener('deviceorientation', handleDeviceOrientation);
+          }
+    }
+
+    function handleDeviceOrientation(event) {
         const screenNormal = getNormalOfScreen(event);
         if(screenNormal.y > 0.1 || screenNormal.y < -0.1) {
             forwardBackSpeed = screenNormal.y;
@@ -102,7 +121,8 @@ export function init_directionalControls(camera, renderer, scene){
             leftRightSpeed = 0;
         }
         //console.log(screenNormal)
-    });
+    }
+
 
 
     return {
