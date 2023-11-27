@@ -88,13 +88,18 @@ export function init_directionalControls(camera, renderer, scene){
     let forwardBackSpeed = 0;
     let leftRightSpeed = 0;
 
-    //const button = document.createElement("button");
+    const button = document.createElement("button");
     console.log("I AM HERE");
-    //button.innerHTML = "enable device orientation";
+    button.innerHTML = "enable device orientation";
+    button.style.position = "fixed";
+    button.style.left ="0px";
+    button.style.top ="0px";
+    button.style.width = "100vw";
+    document.body.appendChild(button);
     
     function handleActivation(){
         console.log("testing!");
-        window.removeEventListener("touchstart", handleActivation)
+        button.removeEventListener("click", handleActivation)
         if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === 'function') {
             DeviceOrientationEvent.requestPermission()
               .then(permissionState => {
@@ -108,7 +113,7 @@ export function init_directionalControls(camera, renderer, scene){
             window.addEventListener('deviceorientation', handleDeviceOrientation);
           }
     }
-    window.addEventListener("touchstart",handleActivation);
+    button.addEventListener("click",handleActivation);
 
     function handleDeviceOrientation(event) {
         const screenNormal = getNormalOfScreen(event);
