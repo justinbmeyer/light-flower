@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from './node_modules/three/examples/jsm/controls/OrbitControls.js';
 import { ArcballControls } from './node_modules/three/examples/jsm/controls/ArcballControls.js';
 
+import {  getNormalOfScreen } from './orientation.js';
+
 export function init_directionalControls(camera, renderer, scene){
     //const controls = new OrbitControls(camera, renderer.domElement);
     //controls.listenToKeyEvents( window );
@@ -48,15 +50,42 @@ export function init_directionalControls(camera, renderer, scene){
         if(event.shiftKey) {
             if(event.code === "ArrowRight") {
                 camera.rotateOnAxis(new THREE.Vector3(0, 1, 0), -Math.PI * 5 / 180);
+                //camera.up.applyAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI * 5 / 180).normalize()
             }
             if(event.code === "ArrowLeft") {
+                
                 camera.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI * 5 / 180);
+                //camera.up.applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI * 5 / 180).normalize()
+
+                //const newRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI * 5 / 180);
+                //camera.quaternion.multiplyQuaternions(newRotation, camera.quaternion);
+                //camera.up.applyQuaternion(newRotation).normalize();
             }
             if(event.code === "ArrowUp") {
+                // we need to calculate "left"
+                const left = getLeftOfCamera(camera);
+                // rotate to new direction
                 camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 5 / 180);
+                // update to new direction
+                var newUp = new THREE.Vector3().crossVectors(getCameraDirection(camera), left);
+                camera.up.copy(newUp); 
+                //camera.up.applyAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI * 5 / 180).normalize()
+
+                //const newRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI * 5 / 180);
+                //camera.quaternion.multiplyQuaternions(newRotation, camera.quaternion);
+                //camera.up.applyQuaternion(newRotation).normalize();
             }
             if(event.code === "ArrowDown") {
+
+                const left = getLeftOfCamera(camera);
                 camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 5 / 180);
+                var newUp = new THREE.Vector3().crossVectors(getCameraDirection(camera), left);
+                camera.up.copy(newUp); 
+                
+                //const newRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI * 5 / 180);
+                //camera.quaternion.multiplyQuaternions(newRotation, camera.quaternion);
+                //camera.up.applyQuaternion(newRotation).normalize();
+                
             }
         } else {
             if(event.code === "ArrowRight") {
@@ -87,53 +116,33 @@ export function init_directionalControls(camera, renderer, scene){
 
     let forwardBackSpeed = 0;
     let leftRightSpeed = 0;
+    /*
+    getDeviceOrientation(function handleDeviceOrientation(event) {
 
-    const button = document.createElement("button");
-    console.log("I AM HERE");
-    button.innerHTML = "enable device orientation";
-    button.style.position = "fixed";
-    button.style.left ="0px";
-    button.style.top ="0px";
-    button.style.width = "100vw";
-    document.body.appendChild(button);
-    
-    function handleActivation(){
-        console.log("testing!");
-        button.removeEventListener("click", handleActivation)
-        if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            DeviceOrientationEvent.requestPermission()
-              .then(permissionState => {
-                if (permissionState === 'granted') {
-                  window.addEventListener('deviceorientation', handleDeviceOrientation);
-                }
-              })
-              .catch(console.error);
-          } else {
-            console.log("just listening")
-            window.addEventListener('deviceorientation', handleDeviceOrientation);
-          }
-    }
-    button.addEventListener("click",handleActivation);
-
-    function handleDeviceOrientation(event) {
+        
         const screenNormal = getNormalOfScreen(event);
-        if(screenNormal.y > 0.1 || screenNormal.y < -0.1) {
+        if(screenNormal.y > 0.2 || screenNormal.y < -0.2) {
             forwardBackSpeed = screenNormal.y;
         } else {
             forwardBackSpeed = 0;
         }
-        if(screenNormal.x > 0.1 || screenNormal.x < -0.1) {
+        if(screenNormal.x > 0.2 || screenNormal.x < -0.2) {
             leftRightSpeed = screenNormal.x;
         } else {
             leftRightSpeed = 0;
         }
         //console.log(screenNormal)
-    }
+    });*/
+
+    
 
 
 
     return {
         update(){
+            
+
+            return;
             if(forwardBackSpeed === 0 && leftRightSpeed === 0) {
                 return;
             }
@@ -142,10 +151,10 @@ export function init_directionalControls(camera, renderer, scene){
             const originalLeft  = new THREE.Vector3().crossVectors(camera.up, originalDirection).normalize(); 
             const originalPosition = new THREE.Vector3().copy(camera.position);
 
-            const howMuchToMoveLeft = originalLeft.clone().multiplyScalar( leftRightSpeed )
+            const howMuchToMoveLeft = originalLeft.clone().multiplyScalar( leftRightSpeed* .1 )
             // move how it looked like we were going to move
             const newPositionOffSphere = originalPosition.clone()
-                .add(originalDirection.multiplyScalar( forwardBackSpeed ))
+                .add(originalDirection.multiplyScalar( forwardBackSpeed* .1 ))
                 .add(howMuchToMoveLeft);
 
             // where is that from 0,0,0?
@@ -228,17 +237,14 @@ export function init_getMouse(element, onMouseMove){
         return mouse;
     }
 }
+function getCameraDirection(camera){
+    var cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+    return cameraDirection;
+}
 
+function getLeftOfCamera(camera){
+   
 
-function getNormalOfScreen({alpha, beta, gamma}){
-    alpha = THREE.MathUtils.degToRad(alpha);
-    beta = THREE.MathUtils.degToRad(beta);
-    gamma = THREE.MathUtils.degToRad(-gamma);
-
-    // Create Euler object
-    var euler = new THREE.Euler(beta,alpha , gamma, 'YXZ'); // The order might vary depending on your use case
-
-    // Apply rotation to a base vector
-    var baseVector = new THREE.Vector3(0, 1, 0); // Z-axis unit vector
-    return baseVector.applyEuler(euler);
+    return new THREE.Vector3().crossVectors(camera.up, getCameraDirection(camera)).normalize();
 }

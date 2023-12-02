@@ -76,3 +76,51 @@ export function randomPointOnSphere(radius){
     // The point (x, y, z) is a random point on the surface of the sphere
     return new THREE.Vector3(x,y,z)
 }
+
+
+
+export function addAngles(angle1, angle2) {
+    var sum = angle1 + angle2;
+    // Normalize the sum to be within 0 to 360 degrees
+    sum = sum % 360;
+    if (sum < 0) {
+        sum += 360;
+    }
+    return sum;
+}
+
+export function subtractAngles(angle1, angle2) {
+    var difference = angle2 - angle1;
+
+    // Adjusting for angles greater than 360 or less than -360
+    difference = (difference + 360) % 360;
+
+    if (difference > 180) {
+        difference -= 360;
+    }
+    
+    return difference;
+}
+
+
+
+
+export function getNormalOfScreen(event, orientationType = getOrientation()){
+    let {alpha, beta, gamma, absolute} = event;
+    if(report === true) {
+        
+        console.log(orientationType, "("+[alpha, beta, gamma].join(", ")+")", absolute);
+        report = false;
+    }
+    alpha = THREE.MathUtils.degToRad(alpha);
+    beta = THREE.MathUtils.degToRad(beta);
+    gamma = THREE.MathUtils.degToRad(-gamma);
+    
+
+    // Create Euler object
+    var euler = new THREE.Euler(beta,alpha , gamma, 'YXZ'); // The order might vary depending on your use case
+
+    // Apply rotation to a base vector
+    var baseVector = new THREE.Vector3(0, 1, 0); // Z-axis unit vector
+    return baseVector.applyEuler(euler);
+}

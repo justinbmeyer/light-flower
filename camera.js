@@ -13,7 +13,8 @@ export function makeCamera(element){
 
 
     // Rotate around Z-axis
-    camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI / 4);  // angleZ in radians
+    //camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI / 4);  // angleZ in radians
+    //camera.up.applyAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 4).normalize()
     //camera.translateY(-9);
     //camera.translateZ(2);
     //camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 65 / 180);

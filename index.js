@@ -20,7 +20,7 @@ function main() {
 
     const  {renderer, camera} = makeCameraRendererMatchElementFrame();
     const scene = new THREE.Scene();
-    debug(scene);
+    const debugHooks = debug(scene, camera);
 
     // controls
     const directionalControls = init_directionalControls(camera, renderer, scene);
@@ -35,7 +35,7 @@ function main() {
     // "game board"
     //scene.add(makeGrass());
     //scene.add(makeGrassTexture());
-    scene.add(makeGrassWorld(10))
+    //scene.add(makeGrassWorld(10))
 
     let oneMouseMove = false;
     // EVENTS
@@ -82,7 +82,7 @@ function main() {
                 }
 
             }
-
+            debugHooks.animate();
             render(time);
         }
     
@@ -95,7 +95,7 @@ function main() {
             //console.log(camera.position);
     
             requestAnimationFrame( animate );
-    
+            //setTimeout(animate, 3000)
         }
     
         requestAnimationFrame( animate );

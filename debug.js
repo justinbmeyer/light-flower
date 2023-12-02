@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { init_cube } from './objects/cube.js';
-
-export function debug(scene){
+import { getOrientation, getFirstEvent, addEventListener } from './orientation.js';
+import { subtractAngles } from './geometry-helpers.js';
+export function debug(scene, camera){
 
     const size = 25; // The size of the grid (10x10 in this example)
     const divisions = 25; // How many divisions (lines) the grid will have
@@ -26,6 +27,98 @@ export function debug(scene){
     scene.add( init_cube({x: -5, y: 5, color: 0x8080ff}) )
     scene.add( init_cube({x: -5, y: -5, color: 0x000080}) )
     scene.add( init_cube({x: 0, y: 0, color: 0xffffff}) )
+
+
+    var axesHelper = new THREE.AxesHelper(1);
+    scene.add(axesHelper);
+    // The distance in front of the camera where the sphere should appear
+    var distanceInFrontOfCamera = 3;
+
+
+    // Create the arrow helper
+    const userTopDirection = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 5, 0xffff00);
+
+    // Add the arrow to the scene
+    scene.add(userTopDirection);
+        
+    
+    const deviceOrientation = document.createElement("div");
+    document.body.append(deviceOrientation);
+    Object.assign(deviceOrientation.style,{
+        position: "fixed",
+        right: "0px",
+        top: "0px",
+        fontSize: "2vh",
+        color: "white"
+    });
+
+    
+    let lastOrientationData;
+    addEventListener((orientationData)=>{
+        lastOrientationData = orientationData;
+        const {adjustedOrientation, sourceOrientationEvent, deviceOrientationAtLastScreenOrientation, 
+            screenOrientation, z, isOrientationRelativeToGravity} = orientationData;
+        const event = sourceOrientationEvent;
+        const firstEvent = deviceOrientationAtLastScreenOrientation,
+            firstAlpha = firstEvent?.alpha || 0,
+            dAlpha = Math.round(adjustedOrientation.alpha),
+            firstBeta = firstEvent?.beta||0,
+            dBeta = Math.round(adjustedOrientation.beta)
+
+        deviceOrientation.innerHTML = `
+            <pre style="margin: 0px">alpha (.) ${Math.round( event.alpha ) } - ${Math.round(firstAlpha)} = ${dAlpha}</pre>
+            <pre style="margin: 0px">beta  (-) ${Math.round( event.beta ) }  - ${Math.round(firstBeta)} = ${dBeta}</pre>
+            <pre style="margin: 0px">gamma (|) ${Math.round( event.gamma ) } - ${Math.round(firstEvent.gamma)} =${Math.round(adjustedOrientation.gamma)} </pre>
+            <pre style="margin: 0px">${getOrientation()} ${isOrientationRelativeToGravity? "🌎" : "📱"}</p>
+        `;
+    });
+    let thereWasAKeyddown = false;
+    window.addEventListener("keydown", function(event){
+        thereWasAKeyddown = true;
+    })
+
+    return {
+        animate(){
+            var cameraDirection = new THREE.Vector3();
+            camera.getWorldDirection(cameraDirection);
+
+            const left = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize(),
+                right = left.clone().negate(),
+                movement = cameraDirection.clone().multiplyScalar(distanceInFrontOfCamera).add(camera.up)
+                    .add(left)
+
+
+
+            if(thereWasAKeyddown) {
+                console.log({
+                    directionAndLeft: arePerpendicular(cameraDirection, left),
+                    directionAndUp: arePerpendicular(cameraDirection,camera.up.clone() ),
+                    upAndLeft: arePerpendicular(left, camera.up.clone()),
+                    pos: camera.position.clone(), 
+                    up: camera.up.clone(), 
+                    direction: cameraDirection.clone(), 
+                    left: left.clone(),
+                    movement
+                })
+                thereWasAKeyddown = false;
+            }
+                
+            
+            
+            axesHelper.position.copy(camera.position).add(cameraDirection.multiplyScalar(distanceInFrontOfCamera))
+                .add(camera.up)
+                .add(left);
+
+            if(lastOrientationData) {
+                userTopDirection.position.copy(camera.position).add(cameraDirection.multiplyScalar(distanceInFrontOfCamera))
+                    .add(camera.up)
+                    .add(right);
+                console.log(userTopDirection.position)
+                userTopDirection.setDirection(lastOrientationData.userTopDirection);
+            }
+            
+        }
+    }
 }
 
 function numberToHexString(number) {
@@ -118,6 +211,10 @@ export function drawFrustrum(scene , camera){
     camera.updateProjectionMatrix();
 }
 
+export function init_orientation(){
+    return new THREE.ArrowHelper(direction, origin, length, color);
+}
+
 function animateRotation(mesh, r){
     let amount = 0;
     const iteration = function(){
@@ -139,6 +236,11 @@ function animateRotation(mesh, r){
 function getNormalFromMesh(mesh){
     var normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
     return new THREE.Vector3(0, 0, 1).applyMatrix3(normalMatrix).normalize();
+}
+
+function arePerpendicular(vector1, vector2){
+    var dotProduct = vector1.dot(vector2);
+    return Math.abs(dotProduct) < Number.EPSILON
 }
 
 function findPoint(plane){
