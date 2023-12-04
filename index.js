@@ -39,7 +39,8 @@ function main() {
     // lighting
     const spotLight = makeSpotLight();
     positionSpotLightFromCamera(spotLight, camera);
-    scene.add(spotLight, spotLight.target, makeAmbientLight() );
+    const ambientLight = makeAmbientLight()
+    scene.add(spotLight, spotLight.target, ambientLight );
     
     if(usesTouchEvents) {
         turnSpotlightOff(spotLight);
@@ -72,7 +73,7 @@ function main() {
     const loadingFlowers = load_flowers({
         flowerPicked(){
             flowersPicked++;
-            sunriseTween.newEndValue(flowersPicked / 12);
+            sunriseTween.newEndValue(flowersPicked / 25);
         }
     })
 
@@ -116,6 +117,7 @@ function main() {
             }
 
             updateBackgroundSunrise(scene, sunriseTween.getValue())
+            ambientLight.intensity = 1 + sunriseTween.getValue()* 20;
 
             render(time);
         }

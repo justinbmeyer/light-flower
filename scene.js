@@ -4,12 +4,14 @@ import * as THREE from 'three';
 
 const colorBreakpoints = ["black",0x231e46,0xff6b3e,0xf7c16a,0xffef7a, 0xb5d6e0]
 export function updateBackgroundSunrise(scene, howFarToSunrise){
-    if(howFarToSunrise >= 1) {
-        return new THREE.Color(colorBreakpoints[colorBreakpoints.length - 1]);
-    }
+    
     const point = colorBreakpoints.length*howFarToSunrise;
     const left = Math.floor(point);
     const right = left+1;
+    if(right >= colorBreakpoints.length) {
+        scene.background =  new THREE.Color(colorBreakpoints[colorBreakpoints.length - 1]);
+        return;
+    }
     const fraction = point % 1;
     const color = interpolateColor(colorBreakpoints[left],colorBreakpoints[right], fraction);
 
