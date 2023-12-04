@@ -1,5 +1,14 @@
 import { GLTFLoader } from '../../node_modules/three/examples/jsm/loaders/GLTFLoader.js';
 import { moveToSurfaceOfSphere } from '../../geometry-helpers.js';
+import * as THREE from 'three';
+
+import { load_photos } from '../photos/photos.js';
+import { yawnish,nightSounds } from '../../sounds/sounds.js';
+
+
+
+
+
 
 function loadFlowerModel(success, progress, error){
     const loader = new GLTFLoader();
@@ -20,53 +29,141 @@ function loadFlowerPromise(){
         });
     })
 }
+let flowersPicked = 0;
 
 export const flowerPromise = loadFlowerPromise();
 
-export const flowerPower = flowerPromise.then((baseFlower) => {
-    return {
-        init_flower({position = [0,0,0]} = {}){
-            const group = new THREE.Group();
-            const flower = baseFlower.clone();
+export function load_flowers(handlers){
+    return Promise.all([flowerPromise,load_photos()])
+        .then(([baseFlower, {init_photo}]) => {
+        return {
+            init_flower({position = [0,0,0]} = {}){
+                const group = new THREE.Group();
+                const flower = baseFlower.clone();
+                flower.rotation.y = - Math.PI * 55 / 180;
+                group.add(flower);
 
-            const box = new THREE.Box3().setFromObject(flower);
-            const boundingSphere = new THREE.Sphere();
-            box.getBoundingSphere(boundingSphere);
-            
+                /*const box = new THREE.Box3().setFromObject(flower);
+                const boundingSphere = new THREE.Sphere();
+                box.getBoundingSphere(boundingSphere);
+                
 
-            // Create a visual representation of the bounding sphere
-            const sphereMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0x00ff00, wireframe: true, 
-                transparent: true,
-                opacity: 0.0
-            });
-            const boundingSphereMesh = new THREE.Mesh(new THREE.SphereGeometry(boundingSphere.radius, 32, 32), sphereMaterial);
-            boundingSphereMesh.position.copy(boundingSphere.center);
+                // Create a visual representation of the bounding sphere
+                const sphereMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x00ff00, wireframe: true, 
+                    transparent: true,
+                    opacity: 0.0
+                });
+                const boundingSphereMesh = new THREE.Mesh(new THREE.SphereGeometry(boundingSphere.radius, 32, 32), sphereMaterial);
+                boundingSphereMesh.position.copy(boundingSphere.center);*/
+                //group.add(boundingSphereMesh);
 
-            // Add the bounding sphere mesh to the group
-            group.add(boundingSphereMesh);
-            group.add(flower);
-            //console.log(position);
-            //group.position.set(...position);
-            group.scale.set(4,4,4);
-            //group.rotation.y = - Math.PI * ( 60 / 180);
-            //group.rotation.x = Math.PI / 2;
+                const headOnArms = init_photo("head-on-arms");
+                headOnArms.scale.set(.3,.3,.3);
+                headOnArms.position.set(0,.265,.029);
+                group.add(headOnArms);
+                
+                const kiraAwake = init_photo("kira-awake");
+                kiraAwake.scale.set(.2,.2,.2);
+                kiraAwake.position.set(0,.27,.025);
+                kiraAwake.visible = false;
+                group.add(kiraAwake);
+        
+                
+        
 
-            moveToSurfaceOfSphere({radius: 10, object3d: group})
-            return group;
-        },
-        animate_flower(flower, raycaster) {
-            const flowerIntersects = raycaster.intersectObjects(flower.children);
-            if(flowerIntersects.length) {
-                //flowerScale = flowerScale + 0.01;
-                //flower.scale.set(flowerScale, flowerScale, flowerScale);
-                flower.scale.addScalar(0.01);
+                group.scale.set(4,4,4);
+
+                moveToSurfaceOfSphere({radius: 10, object3d: group});
+                group._originalRotation = group.rotation.clone();
+                group._soundPlayed = false;
+                group._picked = false;
+                group._awake = kiraAwake;
+                group._sleeping = headOnArms;
+                return group;
+            },
+            animate_flower(flower, camera, mouse) {
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, camera);
+                const flowerIntersects = raycaster.intersectObjects(flower.children);
+                if(flowerIntersects.length) {
+                    //flowerScale = flowerScale + 0.01;
+                    //flower.scale.set(flowerScale, flowerScale, flowerScale);
+                    if(flower.scale.x < 5) {
+                        flower.scale.addScalar(0.09);
+                    } else if(!flower._picked){
+                        flower._picked = true;
+                        flowersPicked++;
+                        flower._awake.visible = true;
+                        flower._sleeping.visible = false;
+                        if(handlers.flowerPicked) {
+                            handlers.flowerPicked();
+                        }
+                        return;
+                    }
+                    
+                    flower.rotation.copy(flower._originalRotation);
+                    const rotatedPoint = movePointToSphereWithReferencePointAtNorthPole(camera.position, flower.position);
+                    window.FLOWER = flower;
+                    const yaw = getYawFromPointOnSphere(rotatedPoint);
+                    flower.rotateOnAxis(new THREE.Vector3(0, 1, 0), yaw )
+                    if(!flower._soundPlayed) {
+                        flower._soundPlayed = true;
+                        yawnish.play();
+                    }
+                }
             }
         }
-    }
-})
+    })
+}
 
 
+function rotateOnYAxisFromBasePosition(object, yaw){
+    object.rotateOnAxis(new THREE.Vector3(0, 1, 0), yaw );
+    var euler = new THREE.Euler().setFromQuaternion(object.quaternion, 'XYZ');
+
+    // Extracting individual angles
+    var pitch = euler.x; // Rotation around X-axis
+    var yaw = euler.y;   // Rotation around Y-axis
+    var roll = euler.z;  // Rotation around Z-axis
+
+    object.rotation.set(0, 0, 0);
+    object.quaternion.set(0, 0, 0, 1);
+
+    // Apply new rotation
+    object.rotation.x = pitch;
+    object.rotation.y = yaw;
+    object.rotation.z = roll;
+}
+
+function movePointToSphereWithReferencePointAtNorthPole(point, referencePoint){
+    const pointToNorthPole = referencePoint.clone();
+    var northPole = new THREE.Vector3(0, 1, 0); // Y-axis
+    var axis = new THREE.Vector3();
+
+    axis.crossVectors(pointToNorthPole, northPole).normalize();
+
+    var angle = Math.acos(pointToNorthPole.normalize().dot(northPole));
+
+    var quaternion = new THREE.Quaternion();
+    quaternion.setFromAxisAngle(axis, angle);
+
+
+    var rotatedPoint = point.clone();
+        rotatedPoint.applyQuaternion(quaternion);
+    return rotatedPoint;
+}
+
+function getYawFromPointOnSphere(position){
+    var direction = position.clone().normalize();
+
+    // Calculate pitch and yaw
+    var pitch = Math.atan2(-direction.y, Math.sqrt((direction.x * direction.x) + (direction.z * direction.z)));
+    var yaw = Math.atan2(direction.x, direction.z);
+
+    // Create a Euler object (assuming 'XYZ' order)
+    return yaw;
+}
 
 /*
 export async function getFlower({position = [0,0,0]}){

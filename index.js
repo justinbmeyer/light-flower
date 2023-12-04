@@ -5,14 +5,18 @@ import { makeGrassTexture, makeGrassWorld} from './grass.js';
 import { makeCameraRendererMatchElementFrame } from './camera-renderer-element.js';
 import {  
         makeSpotLight, makeAmbientLight, 
-        positionSpotLightAtCamera, 
-        pointSpotLightAtXYPlaneFromMouseRaycaster } from './lighting.js';
+        positionSpotLightFromCamera, 
+        pointSpotLightAtXYPlaneFromMouseRaycaster, turnSpotlightOff, turnSpotlightOn } from './lighting.js';
 
-import {init_directionalControls, animate_directionalControls, init_getMouse } from "./controls.js";
+import {init_directionalControls, animate_directionalControls, init_touch, usesTouchEvents } from "./controls.js";
 
-import { flowerPower } from './objects/flower/flower.js';
+import { load_flowers } from './objects/flower/flower.js';
 import { init_cube } from './objects/cube.js';
 import { debug, drawFrustrum } from './debug.js';
+import { startingCameraPositionAndDirection } from './camera.js';
+import { makeStars } from './objects/stars.js';
+import { updateBackgroundSunrise } from './scene.js';
+import { tween } from './geometry-helpers.js';
 
 //import { monkeyPower } from './objects/monkey/monkey.js';
 
@@ -20,46 +24,75 @@ function main() {
 
     const  {renderer, camera} = makeCameraRendererMatchElementFrame();
     const scene = new THREE.Scene();
-    const debugHooks = debug(scene, camera);
+    //const debugHooks = debug(scene, camera);
+    window.camera = camera;
+    window.THREE = THREE;
 
     // controls
+    startingCameraPositionAndDirection(camera);
     const directionalControls = init_directionalControls(camera, renderer, scene);
-    const getMouse = init_getMouse(renderer.domElement, mouseMove);
+    const getPointers = init_touch(renderer.domElement, {
+        pointerMove, pointerDown, pointerUp
+    });
 
 	
     // lighting
     const spotLight = makeSpotLight();
-    positionSpotLightAtCamera(spotLight, camera);
+    positionSpotLightFromCamera(spotLight, camera);
     scene.add(spotLight, spotLight.target, makeAmbientLight() );
+    
+    if(usesTouchEvents) {
+        turnSpotlightOff(spotLight);
+    }
+    
 
     // "game board"
     //scene.add(makeGrass());
     //scene.add(makeGrassTexture());
-    //scene.add(makeGrassWorld(10))
+    scene.add(makeGrassWorld(10));
+    scene.add(makeStars())
 
-    let oneMouseMove = false;
     // EVENTS
-    function mouseMove({event}){
-        oneMouseMove = true;
+    function pointerDown(){
+        turnSpotlightOn(spotLight)
+    }
+    function pointerMove({event}){
         const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(getMouse(), camera);
+        raycaster.setFromCamera(getPointers().pointerMove, camera);
         // make sure the spot light is looking at the mouse
         pointSpotLightAtXYPlaneFromMouseRaycaster(spotLight, raycaster);
     }
+    function pointerUp(){
+        if(usesTouchEvents) {
+            turnSpotlightOff(spotLight);
+        }
+    }
+    let flowersPicked = 0;
+    const sunriseTween = tween(0,0, 5000)
+    const loadingFlowers = load_flowers({
+        flowerPicked(){
+            flowersPicked++;
+            sunriseTween.newEndValue(flowersPicked / 12);
+        }
+    })
+
    
     renderer.render( scene, camera );
     
     //drawFrustrum(scene, camera);
 
-    Promise.all([flowerPower, /*monkeyPower*/])
+    Promise.all([loadingFlowers/*monkeyPower*/])
         .then( ([
             {init_flower, animate_flower},
+            // {init_photo}
             //{init_monkey}
         ])=>{
+
+        
         
         const flowers = [];
-        for(let i = 0; i < 10; i++) {
-            const flower = init_flower({position: [5 - Math.random() * 10, 5 - Math.random() * 10, 0]});
+        for(let i = 0; i < 100; i++) {
+            const flower = init_flower({});
             scene.add( flower );
             flowers.push(flower);
         }
@@ -68,34 +101,34 @@ function main() {
         //scene.add(monkey);
 
         function animate(time){
-            const mouse = getMouse();
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(getMouse(), camera);
+            const mouse = getPointers().pointerMove;
+            
     
             time *= 0.001; // convert time to seconds
             
             animate_directionalControls(directionalControls);
 
-            if(oneMouseMove) {
+            if(mouse) {
                 for(const flower of flowers) {
-                    animate_flower(flower, raycaster);
+                    animate_flower(flower, camera, mouse);
                 }
 
             }
-            debugHooks.animate();
+
+            updateBackgroundSunrise(scene, sunriseTween.getValue())
+
             render(time);
         }
     
         function render( {time, mouse} ) {
             
-        
-            positionSpotLightAtCamera(spotLight, camera);
+            // only needs to happen after a camera move
+            positionSpotLightFromCamera(spotLight, camera);
     
             renderer.render( scene, camera );
-            //console.log(camera.position);
-    
+      
             requestAnimationFrame( animate );
-            //setTimeout(animate, 3000)
+            
         }
     
         requestAnimationFrame( animate );

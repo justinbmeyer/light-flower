@@ -3,6 +3,11 @@ import { OrbitControls } from './node_modules/three/examples/jsm/controls/OrbitC
 import { ArcballControls } from './node_modules/three/examples/jsm/controls/ArcballControls.js';
 
 import {  getNormalOfScreen } from './orientation.js';
+import { rotateCameraAndCameraTopOnXAxis } from './camera.js';
+import { addEventListener } from './orientation.js';
+
+
+export const usesTouchEvents = 'ontouchstart' in window;
 
 export function init_directionalControls(camera, renderer, scene){
     //const controls = new OrbitControls(camera, renderer.domElement);
@@ -62,30 +67,10 @@ export function init_directionalControls(camera, renderer, scene){
                 //camera.up.applyQuaternion(newRotation).normalize();
             }
             if(event.code === "ArrowUp") {
-                // we need to calculate "left"
-                const left = getLeftOfCamera(camera);
-                // rotate to new direction
-                camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 5 / 180);
-                // update to new direction
-                var newUp = new THREE.Vector3().crossVectors(getCameraDirection(camera), left);
-                camera.up.copy(newUp); 
-                //camera.up.applyAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI * 5 / 180).normalize()
-
-                //const newRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI * 5 / 180);
-                //camera.quaternion.multiplyQuaternions(newRotation, camera.quaternion);
-                //camera.up.applyQuaternion(newRotation).normalize();
+                rotateCameraAndCameraTopOnXAxis(camera, Math.PI * 5 / 180);
             }
             if(event.code === "ArrowDown") {
-
-                const left = getLeftOfCamera(camera);
-                camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI * 5 / 180);
-                var newUp = new THREE.Vector3().crossVectors(getCameraDirection(camera), left);
-                camera.up.copy(newUp); 
-                
-                //const newRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI * 5 / 180);
-                //camera.quaternion.multiplyQuaternions(newRotation, camera.quaternion);
-                //camera.up.applyQuaternion(newRotation).normalize();
-                
+                rotateCameraAndCameraTopOnXAxis(camera, -Math.PI * 5 / 180);
             }
         } else {
             if(event.code === "ArrowRight") {
@@ -116,6 +101,29 @@ export function init_directionalControls(camera, renderer, scene){
 
     let forwardBackSpeed = 0;
     let leftRightSpeed = 0;
+    let leftRightTurnSpeed = 0;
+    
+    addEventListener((orientationData)=>{
+        // posture adjustment
+        forwardBackSpeed = acceleratedAndGappedSpeed(orientationData.userTopDirection.z, 0.4, 0.04, 0.9);
+        /*
+        if(orientationData.userTopDirection.z < -0.4) {
+            forwardBackSpeed = -(orientationData.userTopDirection.z+0.2) * .15;
+        } else if(orientationData.userTopDirection.z > 0) {
+            forwardBackSpeed = -(orientationData.userTopDirection.z+0.2) * .15;
+        } else {
+            forwardBackSpeed = 0;
+        }*/
+        
+        if(orientationData.userTopDirection.x > 0.2 || orientationData.userTopDirection.x < -0.2) {
+            leftRightSpeed = -orientationData.userTopDirection.x * .15;
+        } else {
+            leftRightSpeed = 0;
+        }
+        //console.log(orientationData.userTopDirection.x);
+        leftRightSpeed = acceleratedAndGappedSpeed(orientationData.userTopDirection.x, 0.0, 0.03, 1.0);
+    });
+
     /*
     getDeviceOrientation(function handleDeviceOrientation(event) {
 
@@ -142,7 +150,7 @@ export function init_directionalControls(camera, renderer, scene){
         update(){
             
 
-            return;
+
             if(forwardBackSpeed === 0 && leftRightSpeed === 0) {
                 return;
             }
@@ -151,10 +159,10 @@ export function init_directionalControls(camera, renderer, scene){
             const originalLeft  = new THREE.Vector3().crossVectors(camera.up, originalDirection).normalize(); 
             const originalPosition = new THREE.Vector3().copy(camera.position);
 
-            const howMuchToMoveLeft = originalLeft.clone().multiplyScalar( leftRightSpeed* .1 )
+            const howMuchToMoveLeft = originalLeft.clone().multiplyScalar( leftRightSpeed )
             // move how it looked like we were going to move
             const newPositionOffSphere = originalPosition.clone()
-                .add(originalDirection.multiplyScalar( forwardBackSpeed* .1 ))
+                .add(originalDirection.multiplyScalar( forwardBackSpeed ))
                 .add(howMuchToMoveLeft);
 
             // where is that from 0,0,0?
@@ -210,41 +218,84 @@ export function init_directionalControls(camera, renderer, scene){
     }
 }
 
-
+function acceleratedAndGappedSpeed(value, offset = 0.3, gap = 0.05, accelerationCoefficient = 1.2){
+    let adjustedZ = value + offset,
+        gapAdjustedZ = 0,
+        sign = 1;
+    const width = gap;
+    if(Math.abs(adjustedZ) < width) {
+        adjustedZ = 0; 
+    } else {
+        if(adjustedZ > 0) {
+            gapAdjustedZ = adjustedZ - width;
+            sign = -1;
+        } else {
+            gapAdjustedZ = adjustedZ + width;
+            sign = 1;
+        }
+    }
+    return (gapAdjustedZ* accelerationCoefficient)*(gapAdjustedZ* accelerationCoefficient) * sign;
+}
 
 export function animate_directionalControls(controls){
     controls.update();
 }
 
+function vectorFromEvent(event){
+    return new THREE.Vector2((event.clientX / window.innerWidth) * 2 - 1, - (event.clientY / window.innerHeight) * 2 + 1);
+}
 
-export function init_getMouse(element, onMouseMove){
-    const mouse = new THREE.Vector2();
+export function init_touch(element, callbacks){
+    let pointerDown = null;
+    let pointerMove = null;
+    let pointerDrag = null;
+    let pointerUp = null;
     
-    element.addEventListener('pointermove', handleMouseMove, false)
+    element.addEventListener("ontouchstart", function(event){
+        event.preventDefault();
+    })
+
+    element.addEventListener('pointermove', handlePointerMove, false);
+    element.addEventListener('pointerdown', handlePointerDown, false);
+
+    element.addEventListener('pointerup', handlePointerUp, false);
+
     element.style ="touch-action: none";
 
-    function handleMouseMove(event) {
-        // Calculate mouse position in normalized device coordinates (-1 to +1) for both components
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+    function handlePointerDown(event){
+        pointerDown = vectorFromEvent(event);
+        if(callbacks.pointerDown) {
+            callbacks.pointerDown({pointerDown, event});
+        }
+    }
+    
 
-        if(onMouseMove) {
-            onMouseMove({mouse, event});
+    function handlePointerMove(event) {
+        pointerMove = vectorFromEvent(event);
+        if(callbacks.pointerMove) {
+            callbacks.pointerMove({pointerMove, event});
+        }
+        
+        if(pointerDown) {
+            pointerDrag = pointerMove;
+            if(callbacks.pointerDrag) {
+                callbacks.pointerDrag({pointerDown, pointerDrag: pointerMove, event});
+            }
+        } else if(callbacks.mouseMove) {
+            callbacks.mouseMove({pointerMove, event});
         }
     }
 
-    return function getMouse(){
-        return mouse;
+    function handlePointerUp(event){
+        pointerUp = vectorFromEvent(event);
+        if(callbacks.pointerUp) {
+            callbacks.pointerUp({pointerUp, event, pointerDown, pointerDrag});
+        }
+        pointerUp = pointerDown = pointerDrag = pointerMove = null;
+    }
+
+    return function getPointers(){
+        return {pointerUp, pointerDown, pointerDrag, pointerMove};
     }
 }
-function getCameraDirection(camera){
-    var cameraDirection = new THREE.Vector3();
-    camera.getWorldDirection(cameraDirection);
-    return cameraDirection;
-}
 
-function getLeftOfCamera(camera){
-   
-
-    return new THREE.Vector3().crossVectors(camera.up, getCameraDirection(camera)).normalize();
-}

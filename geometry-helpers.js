@@ -124,3 +124,20 @@ export function getNormalOfScreen(event, orientationType = getOrientation()){
     var baseVector = new THREE.Vector3(0, 1, 0); // Z-axis unit vector
     return baseVector.applyEuler(euler);
 }
+
+
+export function tween(startValue = 0, endValue = 1, time = 5000){
+    let startTime = new Date().getTime();
+    return {
+        getValue() {
+            const curTime = new Date().getTime();
+            const fractionOfTime = Math.min( (curTime - startTime ) / time, 1);
+            return startValue + (endValue - startValue) * fractionOfTime;
+        },
+        newEndValue(newEndValue){
+            startValue = this.getValue();
+            startTime = new Date().getTime();
+            endValue = newEndValue
+        }
+    }
+}

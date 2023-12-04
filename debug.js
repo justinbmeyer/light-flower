@@ -2,8 +2,73 @@ import * as THREE from 'three';
 import { init_cube } from './objects/cube.js';
 import { getOrientation, getFirstEvent, addEventListener } from './orientation.js';
 import { subtractAngles } from './geometry-helpers.js';
+
+
+
 export function debug(scene, camera){
 
+    
+
+    init_grid(scene, camera);
+
+    const axesEventHandlers = init_axes(scene, camera);
+
+    const phoneTopDirectionEventHandlers = init_userPhoneTopDirection(scene, camera);
+
+    const phoneOrientationData = init_phoneOrientationData(scene, camera);
+
+
+    let lastOrientationData;
+    addEventListener((orientationData)=>{
+        lastOrientationData = orientationData;
+    });
+    
+    let thereWasAKeyddown = false;
+    window.addEventListener("keydown", function(event){
+        thereWasAKeyddown = true;
+    })
+
+    return {
+        animate(){
+
+            axesEventHandlers.onCameraChange();
+            phoneTopDirectionEventHandlers.onCameraChange();
+
+
+            if(lastOrientationData) {
+                phoneTopDirectionEventHandlers.onPhoneOrientationChange(lastOrientationData);
+                phoneOrientationData.onPhoneOrientationChange(lastOrientationData);
+            }
+            /*
+            if(thereWasAKeyddown) {
+                console.log({
+                    directionAndLeft: arePerpendicular(cameraDirection, left),
+                    directionAndUp: arePerpendicular(cameraDirection,camera.up.clone() ),
+                    upAndLeft: arePerpendicular(left, camera.up.clone()),
+                    pos: camera.position.clone(), 
+                    up: camera.up.clone(), 
+                    direction: cameraDirection.clone(), 
+                    left: left.clone(),
+                    movement
+                })
+                thereWasAKeyddown = false;
+            }*/
+
+            /* 
+            // The old way we used to position helpers visible to the person
+            var cameraDirection = new THREE.Vector3();
+            camera.getWorldDirection(cameraDirection);
+
+            const left = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize(),
+                right = left.clone().negate(),
+                movement = cameraDirection.clone().multiplyScalar(distanceInFrontOfCamera).add( camera.up.clone().multiplyScalar(distanceInFrontOfCamera) )
+                    .add( left.multiplyScalar( distanceInFrontOfCamera * .5 * camera.aspect ))
+            */
+        }
+    }
+}
+
+function init_grid(scene, camera){
     const size = 25; // The size of the grid (10x10 in this example)
     const divisions = 25; // How many divisions (lines) the grid will have
 
@@ -26,22 +91,44 @@ export function debug(scene, camera){
     scene.add( init_cube({x: 5, y: -5, color: 0x800000}) )
     scene.add( init_cube({x: -5, y: 5, color: 0x8080ff}) )
     scene.add( init_cube({x: -5, y: -5, color: 0x000080}) )
-    scene.add( init_cube({x: 0, y: 0, color: 0xffffff}) )
+    //scene.add( init_cube({x: 0, y: 0, color: 0xffffff}) )
+}
 
-
-    var axesHelper = new THREE.AxesHelper(1);
-    scene.add(axesHelper);
-    // The distance in front of the camera where the sphere should appear
-    var distanceInFrontOfCamera = 3;
-
-
-    // Create the arrow helper
-    const userTopDirection = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 5, 0xffff00);
+function init_userPhoneTopDirection(scene, camera) {
+    const userTopDirection = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 0.5, 0xffff00);
 
     // Add the arrow to the scene
     scene.add(userTopDirection);
-        
-    
+
+    return {
+        onPhoneOrientationChange(orientationData){
+            userTopDirection.setDirection(orientationData.userTopDirection);
+        },
+        onCameraChange(){
+            const corners = getCameraFrustrumCorners(camera);
+            const topLeft = getUnitsFromCorner(corners, "top-left", 4, 0.2);
+            userTopDirection.position.copy(topLeft.position)
+        }
+    }
+}
+
+
+function init_axes(scene, camera) {
+    var axesHelper = new THREE.AxesHelper(1);
+    scene.add(axesHelper);
+
+    return {
+        onCameraChange(){
+            const corners = getCameraFrustrumCorners(camera);
+            const topLeft = getUnitsFromCorner(corners, "top-left", 4, 0.2);
+            axesHelper.position.copy(topLeft.position);
+        }
+    }
+}
+
+function init_phoneOrientationData(scene, camera){
+
+    // create an overlay
     const deviceOrientation = document.createElement("div");
     document.body.append(deviceOrientation);
     Object.assign(deviceOrientation.style,{
@@ -51,75 +138,32 @@ export function debug(scene, camera){
         fontSize: "2vh",
         color: "white"
     });
-
     
-    let lastOrientationData;
-    addEventListener((orientationData)=>{
-        lastOrientationData = orientationData;
-        const {adjustedOrientation, sourceOrientationEvent, deviceOrientationAtLastScreenOrientation, 
-            screenOrientation, z, isOrientationRelativeToGravity} = orientationData;
-        const event = sourceOrientationEvent;
-        const firstEvent = deviceOrientationAtLastScreenOrientation,
-            firstAlpha = firstEvent?.alpha || 0,
-            dAlpha = Math.round(adjustedOrientation.alpha),
-            firstBeta = firstEvent?.beta||0,
-            dBeta = Math.round(adjustedOrientation.beta)
-
-        deviceOrientation.innerHTML = `
-            <pre style="margin: 0px">alpha (.) ${Math.round( event.alpha ) } - ${Math.round(firstAlpha)} = ${dAlpha}</pre>
-            <pre style="margin: 0px">beta  (-) ${Math.round( event.beta ) }  - ${Math.round(firstBeta)} = ${dBeta}</pre>
-            <pre style="margin: 0px">gamma (|) ${Math.round( event.gamma ) } - ${Math.round(firstEvent.gamma)} =${Math.round(adjustedOrientation.gamma)} </pre>
-            <pre style="margin: 0px">${getOrientation()} ${isOrientationRelativeToGravity? "🌎" : "📱"}</p>
-        `;
-    });
-    let thereWasAKeyddown = false;
-    window.addEventListener("keydown", function(event){
-        thereWasAKeyddown = true;
-    })
-
     return {
-        animate(){
-            var cameraDirection = new THREE.Vector3();
-            camera.getWorldDirection(cameraDirection);
-
-            const left = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize(),
-                right = left.clone().negate(),
-                movement = cameraDirection.clone().multiplyScalar(distanceInFrontOfCamera).add(camera.up)
-                    .add(left)
-
-
-
-            if(thereWasAKeyddown) {
-                console.log({
-                    directionAndLeft: arePerpendicular(cameraDirection, left),
-                    directionAndUp: arePerpendicular(cameraDirection,camera.up.clone() ),
-                    upAndLeft: arePerpendicular(left, camera.up.clone()),
-                    pos: camera.position.clone(), 
-                    up: camera.up.clone(), 
-                    direction: cameraDirection.clone(), 
-                    left: left.clone(),
-                    movement
-                })
-                thereWasAKeyddown = false;
-            }
-                
-            
-            
-            axesHelper.position.copy(camera.position).add(cameraDirection.multiplyScalar(distanceInFrontOfCamera))
-                .add(camera.up)
-                .add(left);
-
-            if(lastOrientationData) {
-                userTopDirection.position.copy(camera.position).add(cameraDirection.multiplyScalar(distanceInFrontOfCamera))
-                    .add(camera.up)
-                    .add(right);
-                console.log(userTopDirection.position)
-                userTopDirection.setDirection(lastOrientationData.userTopDirection);
-            }
-            
+        onPhoneOrientationChange(orientationData){
+            const {adjustedOrientation, sourceOrientationEvent, deviceOrientationAtLastScreenOrientation, 
+                screenOrientation, z, isOrientationRelativeToGravity} = orientationData;
+            const event = sourceOrientationEvent;
+            const firstEvent = deviceOrientationAtLastScreenOrientation,
+                firstAlpha = firstEvent?.alpha || 0,
+                dAlpha = Math.round(adjustedOrientation.alpha),
+                firstBeta = firstEvent?.beta||0,
+                dBeta = Math.round(adjustedOrientation.beta)
+    
+            deviceOrientation.innerHTML = `
+                <pre style="margin: 0px">alpha (.) ${Math.round( event.alpha ) } - ${Math.round(firstAlpha)} = ${dAlpha}</pre>
+                <pre style="margin: 0px">beta  (-) ${Math.round( event.beta ) }  - ${Math.round(firstBeta)} = ${dBeta}</pre>
+                <pre style="margin: 0px">gamma (|) ${Math.round( event.gamma ) } - ${Math.round(firstEvent.gamma)} =${Math.round(adjustedOrientation.gamma)} </pre>
+                <pre style="margin: 0px">${getOrientation()} ${isOrientationRelativeToGravity? "🌎" : "📱"}</p>
+            `;
         }
     }
+    
+    
 }
+
+
+
 
 function numberToHexString(number) {
     return "0x" + number.toString(16).toUpperCase().padStart(6, '0');
@@ -168,7 +212,7 @@ export function drawFrustrum(scene , camera){
         //planeMesh.quaternion.copy(quaternion);
 
         let displacement = normal.clone().normalize().multiplyScalar(plane.constant);
-        const point = findPoint( plane);
+        const point = findPoint( plane );
         planeMesh.position.add(displacement);
         console.log(names[i], point, rotation(normal));
         if(point) {
@@ -288,3 +332,129 @@ function angleBetweenNormals(vector1, vector2) {
 }
 
 
+
+const opposites = {
+    "near": "far", "far": "near",
+    "bottom": "top", "top": "bottom",
+    "left": "right", "right": "left"
+};
+
+function getCameraFrustrumCorners(camera){
+    // Assuming 'camera' is a THREE.PerspectiveCamera
+    camera.updateMatrixWorld(); // Ensure the camera's matrixWorld is up to date
+
+    const near = camera.near;
+    const far = camera.far;
+    const aspect = camera.aspect;
+    const fov = camera.fov * Math.PI / 180; // Convert FOV from degrees to radians
+
+    // Calculate heights and widths of the near and far planes
+    const heightNear = 2 * Math.tan(fov / 2) * near;
+    const widthNear = heightNear * aspect;
+    const heightFar = 2 * Math.tan(fov / 2) * far;
+    const widthFar = heightFar * aspect;
+
+    // Function to create a corner point
+    function createCorner(x, y, z) {
+        const vector =  new THREE.Vector3(x, y, z)
+            .unproject(camera)
+        //vector.applyMatrix4(camera.matrixWorld);
+        return vector;
+    }
+
+    // Create corner points in camera space
+    return {
+        "near-bottom-left": createCorner(-1, -1, -1), // near bottom-left
+        "near-bottom-right": createCorner(1, -1, -1),  // near bottom-right
+        "near-top-right": createCorner(1, 1, -1),   // near top-right
+        "near-top-left": createCorner(-1, 1, -1),  // near top-left
+        "far-bottom-left": createCorner(-1, -1, 1),    // far bottom-left
+        "far-bottom-right": createCorner(1, -1, 1),     // far bottom-right
+        "far-top-right": createCorner(1, 1, 1),      // far top-right
+        "far-top-left": createCorner(-1, 1, 1)      // far top-left
+
+        /*"near-bottom-left": createCorner(-widthNear / 2, -heightNear / 2, -near), // near bottom-left
+        "near-bottom-right": createCorner(widthNear / 2, -heightNear / 2, -near),  // near bottom-right
+        "near-top-right": createCorner(widthNear / 2, heightNear / 2, -near),   // near top-right
+        "near-top-left": createCorner(-widthNear / 2, heightNear / 2, -near),  // near top-left
+        "far-bottom-left": createCorner(-widthFar / 2, -heightFar / 2, -far),    // far bottom-left
+        "far-bottom-right": createCorner(widthFar / 2, -heightFar / 2, -far),     // far bottom-right
+        "far-top-right": createCorner(widthFar / 2, heightFar / 2, -far),      // far top-right
+        "far-top-left": createCorner(-widthFar / 2, heightFar / 2, -far)      // far top-left*/
+    }
+
+}
+
+/*
+function getCameraFrustrumEdges(corners) {
+    const nearFar = ["near", "far"],
+        leftRight = ["right","left"],
+        topBottom = ["top","bottom"];
+
+    return {
+        "near-bottom": createEdge(corners, "near-bottom-left", ), // near bottom-left
+        "near-right": createEdge(1, -1, -1),  // near bottom-right
+        "near-top": createEdge(1, 1, -1),   // near top-right
+        "near-left": createEdge(-1, 1, -1),  // near top-left
+        "far-bottom": createEdge(-1, -1, 1),    // far bottom-left
+        "far-right": createEdge(1, -1, 1),     // far bottom-right
+        "far-top": createEdge(1, 1, 1),      // far top-right
+        "far-left": createEdge(-1, 1, 1)      // far top-left
+
+    }
+
+    for(let zPlane of nearFar) {
+        for(let xPlane of leftRight) {
+
+        }
+        for(let yPlane of topBottom) {
+            
+        }
+    }
+}*/
+
+function moveUnits(v1, v2, units=1){
+    const howFarToMoveBack = new THREE.Vector3().subVectors(v2, v1).normalize().multiplyScalar(units);
+    return v1.clone().add(howFarToMoveBack)
+}
+function moveScalarUnit(v1, v2, units=.5){
+    const howFarToMoveBack = new THREE.Vector3().subVectors(v2, v1).multiplyScalar(units);
+    return v1.clone().add(howFarToMoveBack)
+}
+
+function getUnitsFromCorner(corners, corner = "top-left", unitsToMoveBack = 1, howFar = 0.5){
+    const cornerParts = corner.split("-");
+
+    const startingCorner = corners["near-"+corner];
+    const farCorner = corners["far-"+corner];
+
+    const oppositeCorner = opposites[cornerParts[0]]+"-"+opposites[cornerParts[1]];
+    const startingOppositeCorner = corners["near-"+oppositeCorner];
+    const farOppositeCorner = corners["far-"+oppositeCorner];
+
+    const movedBackFromStarting = moveUnits(startingCorner, farCorner, unitsToMoveBack);
+    const movedBackFromOpposite = moveUnits(startingOppositeCorner, farOppositeCorner, unitsToMoveBack);
+
+    const howFarToMoveBack = new THREE.Vector3().subVectors(movedBackFromOpposite, movedBackFromStarting).multiplyScalar(howFar);
+    return {
+        moved: howFarToMoveBack,
+        position:  movedBackFromStarting.clone().add(howFarToMoveBack)
+    }
+    
+
+
+
+    /*
+    // we want everything that is different by 1 item ...
+    const cornerParts = corner.split("-");
+    const startingCorner = corners[corner];
+    const finalPosition =  startingCorner.clone();
+    for(let i = 2; i >=0; i--) {
+        const cornerNameToMoveTowards = [...cornerParts]
+        cornerNameToMoveTowards[i] = opposites[cornerParts[i]];
+        const cornerToMoveTowards = corners[cornerNameToMoveTowards.join("-")];
+        const movement = new THREE.Vector3().subVectors(cornerToMoveTowards, startingCorner).multiplyScalar(.5);
+        finalPosition.add(movement);
+    }
+    return finalPosition;*/
+}

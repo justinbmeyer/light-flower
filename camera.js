@@ -7,22 +7,31 @@ export function makeCamera(element){
     const fov = 60;
 	const aspect = element.clientWidth / element.clientHeight; // the canvas default
 	const near = 0.1;
-	const far = 100;
+	const far = 1000;
 	const camera = new THREE.PerspectiveCamera( fov, aspect, near, far );
-	camera.position.set(...CAMERA_POS);
-
-
-    // Rotate around Z-axis
-    //camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI / 4);  // angleZ in radians
-    //camera.up.applyAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 4).normalize()
-    //camera.translateY(-9);
-    //camera.translateZ(2);
-    //camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI * 65 / 180);
-    
-    window.camera = camera;
-    window.THREE = THREE;
+	
     return camera;
 }
 
+export function startingCameraPositionAndDirection(camera){
+    camera.position.set(...CAMERA_POS);
+    rotateCameraAndCameraTopOnXAxis(camera,  Math.PI / 4)
+}
 
+export function rotateCameraAndCameraTopOnXAxis(camera, angle) {
+    const left = getLeftOfCamera(camera);
+    camera.rotateOnAxis(new THREE.Vector3(1, 0, 0), angle);
+    var newUp = new THREE.Vector3().crossVectors(getCameraDirection(camera), left);
+    camera.up.copy(newUp); 
+}
+
+function getCameraDirection(camera){
+    var cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+    return cameraDirection;
+}
+
+function getLeftOfCamera(camera){
+    return new THREE.Vector3().crossVectors(camera.up, getCameraDirection(camera)).normalize();
+}
 

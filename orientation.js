@@ -1,4 +1,5 @@
 import { subtractAngles, addAngles } from "./geometry-helpers";
+import * as THREE from 'three';
 
 let mustRequest = typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === 'function';
 
