@@ -9,13 +9,13 @@ export function updateBackgroundSunrise(scene, howFarToSunrise){
     const left = Math.floor(point);
     const right = left+1;
     if(right >= colorBreakpoints.length) {
-        scene.background =  new THREE.Color(colorBreakpoints[colorBreakpoints.length - 1]);
+        return scene.background =  new THREE.Color(colorBreakpoints[colorBreakpoints.length - 1]);
         return;
     }
     const fraction = point % 1;
     const color = interpolateColor(colorBreakpoints[left],colorBreakpoints[right], fraction);
 
-    scene.background = color;
+    return scene.background = color;
 }
 
 

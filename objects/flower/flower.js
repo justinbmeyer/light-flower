@@ -87,10 +87,20 @@ export function load_flowers(handlers){
                 raycaster.setFromCamera(mouse, camera);
                 const flowerIntersects = raycaster.intersectObjects(flower.children);
                 if(flowerIntersects.length) {
+                    const closest = flowerIntersects[0].distance;
+                    if(closest > 10) {
+                        // we are probably seeing a flower through the earth
+                        return;
+                    }
                     //flowerScale = flowerScale + 0.01;
                     //flower.scale.set(flowerScale, flowerScale, flowerScale);
                     if(flower.scale.x < 5) {
-                        flower.scale.addScalar(0.09);
+                        if(flower.scale.x < 4) {
+                            flower.scale.addScalar(0.20);
+                        } else {
+                            flower.scale.addScalar(0.04);
+                        }
+                        
                     } else if(!flower._picked){
                         flower._picked = true;
                         flowersPicked++;
@@ -104,7 +114,6 @@ export function load_flowers(handlers){
                     
                     flower.rotation.copy(flower._originalRotation);
                     const rotatedPoint = movePointToSphereWithReferencePointAtNorthPole(camera.position, flower.position);
-                    window.FLOWER = flower;
                     const yaw = getYawFromPointOnSphere(rotatedPoint);
                     flower.rotateOnAxis(new THREE.Vector3(0, 1, 0), yaw )
                     if(!flower._soundPlayed) {

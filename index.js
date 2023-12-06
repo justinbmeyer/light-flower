@@ -8,7 +8,8 @@ import {
         positionSpotLightFromCamera, 
         pointSpotLightAtXYPlaneFromMouseRaycaster, turnSpotlightOff, turnSpotlightOn } from './lighting.js';
 
-import {init_directionalControls, animate_directionalControls, init_touch, usesTouchEvents } from "./controls.js";
+import {init_directionalControls, animate_directionalControls, init_touch, usesTouchEvents, 
+        moveCameraWithDrag, finalizeMoveCameraWithDrag, animate_cameraFromDrag } from "./controls.js";
 
 import { load_flowers } from './objects/flower/flower.js';
 import { init_cube } from './objects/cube.js';
@@ -17,6 +18,7 @@ import { startingCameraPositionAndDirection } from './camera.js';
 import { makeStars } from './objects/stars.js';
 import { updateBackgroundSunrise } from './scene.js';
 import { tween } from './geometry-helpers.js';
+import { init_scoreboard } from './rules.js';
 
 //import { monkeyPower } from './objects/monkey/monkey.js';
 
@@ -24,7 +26,7 @@ function main() {
 
     const  {renderer, camera} = makeCameraRendererMatchElementFrame();
     const scene = new THREE.Scene();
-    //const debugHooks = debug(scene, camera);
+    // const debugHooks = debug(scene, camera);
     window.camera = camera;
     window.THREE = THREE;
 
@@ -32,7 +34,8 @@ function main() {
     startingCameraPositionAndDirection(camera);
     const directionalControls = init_directionalControls(camera, renderer, scene);
     const getPointers = init_touch(renderer.domElement, {
-        pointerMove, pointerDown, pointerUp
+        pointerMove, pointerDown, pointerUp,
+        pointerDrag
     });
 
 	
@@ -46,7 +49,7 @@ function main() {
         turnSpotlightOff(spotLight);
     }
     
-
+    const scoreboard = init_scoreboard();
     // "game board"
     //scene.add(makeGrass());
     //scene.add(makeGrassTexture());
@@ -55,25 +58,33 @@ function main() {
 
     // EVENTS
     function pointerDown(){
-        turnSpotlightOn(spotLight)
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(getPointers().pointerDown, camera);
+        pointSpotLightAtXYPlaneFromMouseRaycaster(spotLight, raycaster);
+        turnSpotlightOn(spotLight);
+        moveCameraWithDrag(camera, getPointers().pointerDown);
     }
     function pointerMove({event}){
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(getPointers().pointerMove, camera);
-        // make sure the spot light is looking at the mouse
         pointSpotLightAtXYPlaneFromMouseRaycaster(spotLight, raycaster);
+    }
+    function pointerDrag({event}) {
+        
+        // make sure the spot light is looking at the mouse
+        moveCameraWithDrag(camera, getPointers().pointerDrag);
     }
     function pointerUp(){
         if(usesTouchEvents) {
             turnSpotlightOff(spotLight);
         }
+        finalizeMoveCameraWithDrag(camera, getPointers().pointerUp);
     }
-    let flowersPicked = 0;
     const sunriseTween = tween(0,0, 5000)
     const loadingFlowers = load_flowers({
         flowerPicked(){
-            flowersPicked++;
-            sunriseTween.newEndValue(flowersPicked / 25);
+            scoreboard.pickedFlower();
+            sunriseTween.newEndValue(scoreboard.flowersPicked() / scoreboard.flowersToWin());
         }
     })
 
@@ -102,12 +113,12 @@ function main() {
         //scene.add(monkey);
 
         function animate(time){
-            const mouse = getPointers().pointerMove;
+            const mouse = getPointers().pointerMove || getPointers().pointerDown;
             
     
             time *= 0.001; // convert time to seconds
             
-            animate_directionalControls(directionalControls);
+            
 
             if(mouse) {
                 for(const flower of flowers) {
@@ -116,8 +127,14 @@ function main() {
 
             }
 
-            updateBackgroundSunrise(scene, sunriseTween.getValue())
-            ambientLight.intensity = 1 + sunriseTween.getValue()* 20;
+            const color = updateBackgroundSunrise(scene, sunriseTween.getValue())
+            ambientLight.intensity = 2 + sunriseTween.getValue()* 20;
+            spotLight.intensity = 20 + sunriseTween.getValue()*10;
+            document.querySelector("meta[name=theme-color]").setAttribute("content", ""+color.getHexString())
+
+            animate_directionalControls(directionalControls);
+            animate_cameraFromDrag(camera);
+            //debugHooks.animate();
 
             render(time);
         }

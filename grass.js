@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { rotation as makeRotation, randomPointOnSphere } from './geometry-helpers';
+import { rotation as makeRotation, randomPointOnSphere } from './geometry-helpers.js';
 
 
 export function makeSphere(radius = 10){

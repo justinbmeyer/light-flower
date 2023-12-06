@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { init_cube } from './objects/cube.js';
 import { getOrientation, getFirstEvent, addEventListener } from './orientation.js';
 import { subtractAngles } from './geometry-helpers.js';
-
+import { positionChanges } from './controls.js';
 
 
 export function debug(scene, camera){
@@ -94,34 +94,89 @@ function init_grid(scene, camera){
     //scene.add( init_cube({x: 0, y: 0, color: 0xffffff}) )
 }
 
-function init_userPhoneTopDirection(scene, camera) {
-    const userTopDirection = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 0.5, 0xffff00);
+const CENTERED= true;
 
-    // Add the arrow to the scene
+function init_userPhoneTopDirection(scene, camera) {
+    const length = CENTERED ? 5 : 0.5;
+
+    const userTopDirection = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), length, 0xffff00);
+    userTopDirection.position.copy(new THREE.Vector3(0, 0, 0))
     scene.add(userTopDirection);
 
+    const screenNormal = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), length, 0x00ffff);
+    screenNormal.position.copy(new THREE.Vector3(0, 0, 0))
+    scene.add(screenNormal);
+
+
+    const xz = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), length, 0x9370DB);
+    xz.position.copy(new THREE.Vector3(0, 0, 0))
+    scene.add(xz);
+
+    const speed = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), length, 0xff0000);
+    scene.add(speed);
     return {
         onPhoneOrientationChange(orientationData){
+
+            
             userTopDirection.setDirection(orientationData.userTopDirection);
+            screenNormal.setDirection(orientationData.z);
+
+            //const topWithoutTwistingDirection = coplanarPerpendicularVector(orientationData.z);
+            //topWithoutTwisting.setDirection( topWithoutTwistingDirection );
+
+            const xzDirection = orientationData.userTopDirection.clone();
+            xzDirection.normalize().multiplyScalar(5);
+            xzDirection.y = 0;
+            xz.setDirection(xzDirection);
+            xz.setLength(xzDirection.length());
+
+
+            const speeds = positionChanges(orientationData);
+            const speedVector = new THREE.Vector3(speeds.rightLeftSpeed, speeds.forwardBackSpeed, 0);
+            speed.setDirection(speedVector.clone().normalize());
+            speed.setLength(speedVector.length()* 20)
+
+            /*
+            let planeNormal = new THREE.Vector3().crossVectors(topWithoutTwistingDirection, orientationData.z).normalize();
+
+            // Step 2: Normalize the vectorC
+
+            // Step 3: Calculate the angle using the dot product
+            let dotProduct = planeNormal.dot(orientationData.userTopDirection);
+            let angleRadians = Math.acos(dotProduct);
+
+            // Convert to degrees if needed
+            let angleDegrees = angleRadians * (180 / Math.PI);
+            //console.log(Math.round(angleDegrees))*/
+            
         },
         onCameraChange(){
             const corners = getCameraFrustrumCorners(camera);
             const topLeft = getUnitsFromCorner(corners, "top-left", 4, 0.2);
-            userTopDirection.position.copy(topLeft.position)
+            if(!CENTERED) {
+                userTopDirection.position.copy(topLeft.position);
+                xzDirection.position.copy(topLeft.position);   
+                screenNormal.position.copy(topLeft.position);
+            }
+                
         }
     }
 }
 
 
-function init_axes(scene, camera) {
-    var axesHelper = new THREE.AxesHelper(1);
-    scene.add(axesHelper);
 
+
+function init_axes(scene, camera) {
+    var axesHelper = new THREE.AxesHelper(CENTERED ? 5 : 1);
+    scene.add(axesHelper);
+    axesHelper.position.copy(new THREE.Vector3(0, 0, 0));
     return {
         onCameraChange(){
             const corners = getCameraFrustrumCorners(camera);
             const topLeft = getUnitsFromCorner(corners, "top-left", 4, 0.2);
-            axesHelper.position.copy(topLeft.position);
+            if(!CENTERED) {
+                axesHelper.position.copy(topLeft.position);
+            }
         }
     }
 }
@@ -136,7 +191,8 @@ function init_phoneOrientationData(scene, camera){
         right: "0px",
         top: "0px",
         fontSize: "2vh",
-        color: "white"
+        color: "white",
+        backgroundColor: "gray"
     });
     
     return {

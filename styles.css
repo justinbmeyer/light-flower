@@ -1,0 +1,18 @@
+body {
+    margin: 0; padding: 0; user-select: none; -webkit-user-select: none;
+}
+
+.scoreboard {
+
+    position: fixed;
+    right: 0px;
+    top: 0px;
+}
+.scoreboard p {
+    color: white; font-size: 50px; text-align: right;
+    padding-right: 5px;
+
+}
+.scoreboard p img {
+    float: left;
+}
